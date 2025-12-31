@@ -43,3 +43,9 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Chat memory and checkpoints
+.chat_thread_id
+checkpoints.db
+checkpoints.db-shm
+checkpoints.db-wal

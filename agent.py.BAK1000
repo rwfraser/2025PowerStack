@@ -1,0 +1,45 @@
+import os
+from typing import TypedDict, Annotated, Sequence, Union
+from langchain_openai import ChatOpenAI
+from langchain_tavily import TavilySearchResults
+from langchain_core.messages import BaseMessage, HumanMessage
+from langgraph.graph import StateGraph, END, START
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode, tools_condition
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# 1. Define the State (stores the conversation history)
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+
+# 2. Setup the Tools
+search_tool = TavilySearchResults(max_results=2)
+tools = [search_tool]
+
+# 3. Setup the Model and "bind" the tools to it
+model = ChatOpenAI(model="gpt-4o", temperature=0).bind_tools(tools)
+
+# 4. Define the logic nodes
+def chatbot(state: State):
+    return {"messages": [model.invoke(state["messages"])]}
+
+# 5. Build the Graph
+workflow = StateGraph(State)
+
+# Add our nodes
+workflow.add_node("chatbot", chatbot)
+workflow.add_node("tools", ToolNode(tools)) # Prebuilt node that runs tools
+
+# Define the flow
+workflow.add_edge(START, "chatbot")
+
+# Conditional Edge: If the LLM wants to call a tool, go to 'tools', 
+# otherwise go to 'END'.
+workflow.add_conditional_edges("chatbot", tools_condition)
+
+# After tools are run, always go back to the chatbot to summarize the results
+workflow.add_edge("tools", "chatbot")
+
+agent = workflow.compile()
