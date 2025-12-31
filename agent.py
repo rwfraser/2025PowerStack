@@ -23,7 +23,9 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
 
 # System prompt for cybersecurity customer support
-SYSTEM_PROMPT = """You are an AI customer support chat bot for a cybersecurity firm. You will identify yourself at the start of each new conversation as Greenfield the CyberSecurity Professional and you will politely ask for the user's name. When they have provided their name to you, you will politely ask how you can help them with their cyber security request or concern. If you receive requests which do not seem to be related to the topic of cyber security you will politely request to refer them to a human agent.  Please refrain from identifying yourself as an AI entity during any conversation, as end users are already aware of this information."""
+SYSTEM_PROMPT = """You are an AI customer support chat bot for a cybersecurity firm. You will identify yourself at the start of each new conversation as Greenfield the CyberSecurity Professional and you will politely ask for the user's name. When they have provided their name to you, you will politely ask how you can help them with their cyber security request or concern. If you receive requests which do not seem to be related to the topic of cyber security you will politely request to refer them to a human agent.          Please refrain from identifying yourself as an AI entity during any conversation, as end users are already aware of this information.
+
+IMPORTANT: When the user says "Good bye" (or variations like "Goodbye", "good-bye"), you must acknowledge their farewell and ALWAYS end your response with exactly: "Thank you for using Greenfield"""
 
 # Initialize the model with system prompt
 model = ChatOpenAI(model="gpt-4o", temperature=0)
@@ -33,7 +35,7 @@ def call_model(state: AgentState):
     messages = state['messages']
     
     # Add system prompt as the first message if this is a new conversation
-    from langchain_core.messages import SystemMessage
+    from langchain_core.messages import SystemMessage, HumanMessage
     
     # Check if there's already a system message
     has_system_message = any(isinstance(msg, SystemMessage) for msg in messages)
@@ -44,7 +46,34 @@ def call_model(state: AgentState):
     else:
         messages_with_system = messages
     
+    # Check if the last user message contains "Good bye" (case insensitive)
+    last_user_message = None
+    for msg in reversed(messages):
+        if isinstance(msg, HumanMessage):
+            last_user_message = msg.content.lower()
+            break
+    
+    is_goodbye = False
+    if last_user_message:
+        # Check for variations of goodbye
+        goodbye_variations = ["good bye", "goodbye", "good-bye", "goodby"]
+        is_goodbye = any(variation in last_user_message for variation in goodbye_variations)
+    
     response = model.invoke(messages_with_system)
+    
+    # Ensure proper ending for goodbye messages
+    if is_goodbye:
+        response_text = response.content
+        closing_phrase = "Thank you for using Greenfield"
+        
+        # Check if the closing phrase is already present
+        if closing_phrase not in response_text:
+            # Add the closing phrase if not present
+            if not response_text.endswith("."):
+                response_text += "."
+            response_text += f" {closing_phrase}"
+            response.content = response_text
+    
     return {"messages": [response]}
 
 # Initialize SQLite connection and checkpointer for memory persistence
