@@ -8,6 +8,10 @@ app = FastAPI(title="AI Agent API 2025")
 class ChatRequest(BaseModel):
     message: str
 
+@app.get("/")
+async def root():
+    return {"message": "AI Agent API is running. Visit /docs for API documentation."}
+
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     # Initialize the state with the user message
