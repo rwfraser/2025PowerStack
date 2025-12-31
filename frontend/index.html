@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greenfield CyberSecurity Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-enter {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .typing-indicator span {
+            animation: blink 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes blink {
+            0%, 80%, 100% { opacity: 0.3; }
+            40% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen">
+    <div class="container mx-auto max-w-4xl h-screen flex flex-col p-4">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-t-2xl shadow-2xl p-6">
+            <div class="flex items-center gap-4">
+                <div class="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h1 class="text-2xl font-bold text-white">Greenfield CyberSecurity</h1>
+                    <p class="text-blue-100 text-sm">Professional Security Support</p>
+                </div>
+                <button onclick="startNewConversation()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium">
+                    New Chat
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages Container -->
+        <div id="messages" class="bg-slate-800/50 backdrop-blur-sm flex-1 overflow-y-auto p-6 space-y-4 shadow-inner">
+            <!-- Welcome Message -->
+            <div class="flex gap-3 message-enter">
+                <div class="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </div>
+                <div class="bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl rounded-tl-sm p-4 max-w-[80%] shadow-xl border border-slate-600">
+                    <p class="text-slate-100 leading-relaxed">Welcome to Greenfield CyberSecurity Support. How may I assist you today?</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="bg-slate-800/50 backdrop-blur-sm rounded-b-2xl shadow-2xl p-4 border-t border-slate-700">
+            <form id="chatForm" class="flex gap-3">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Type your cybersecurity question..." 
+                    class="flex-1 bg-slate-700/50 border border-slate-600 text-slate-100 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-400"
+                    autocomplete="off"
+                />
+                <button 
+                    type="submit" 
+                    id="sendButton"
+                    class="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-3 rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
+            </form>
+            <p class="text-slate-400 text-xs mt-2 text-center">Powered by Greenfield AI • Conversation is remembered</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_URL = 'http://localhost:8000';
+        let threadId = null;
+        let isProcessing = false;
+
+        // DOM Elements
+        const messagesContainer = document.getElementById('messages');
+        const chatForm = document.getElementById('chatForm');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+
+        // Initialize
+        messageInput.focus();
+
+        // Send message
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            
+            if (!message || isProcessing) return;
+            
+            // Add user message to UI
+            addMessage(message, 'user');
+            messageInput.value = '';
+            
+            // Show typing indicator
+            const typingId = showTypingIndicator();
+            isProcessing = true;
+            sendButton.disabled = true;
+            
+            try {
+                // Send to API
+                const response = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        thread_id: threadId
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Store thread ID for conversation continuity
+                threadId = data.thread_id;
+                
+                // Remove typing indicator and add bot response
+                removeTypingIndicator(typingId);
+                addMessage(data.response, 'bot');
+                
+            } catch (error) {
+                removeTypingIndicator(typingId);
+                addMessage('Sorry, I encountered an error connecting to the server. Please make sure the backend is running on port 8000.', 'error');
+                console.error('Error:', error);
+            } finally {
+                isProcessing = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        });
+
+        // Add message to UI
+        function addMessage(text, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex gap-3 message-enter';
+            
+            if (type === 'user') {
+                messageDiv.classList.add('flex-row-reverse');
+                messageDiv.innerHTML = `
+                    <div class="bg-slate-600 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    <div class="bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl rounded-tr-sm p-4 max-w-[80%] shadow-xl">
+                        <p class="text-white leading-relaxed">${escapeHtml(text)}</p>
+                    </div>
+                `;
+            } else if (type === 'error') {
+                messageDiv.innerHTML = `
+                    <div class="bg-red-500 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="bg-red-900/50 border border-red-700 rounded-2xl rounded-tl-sm p-4 max-w-[80%] shadow-xl">
+                        <p class="text-red-100 leading-relaxed">${escapeHtml(text)}</p>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                    </div>
+                    <div class="bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl rounded-tl-sm p-4 max-w-[80%] shadow-xl border border-slate-600">
+                        <p class="text-slate-100 leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</p>
+                    </div>
+                `;
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Show typing indicator
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            const id = 'typing-' + Date.now();
+            typingDiv.id = id;
+            typingDiv.className = 'flex gap-3 message-enter';
+            typingDiv.innerHTML = `
+                <div class="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </div>
+                <div class="bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl rounded-tl-sm p-4 shadow-xl border border-slate-600">
+                    <div class="typing-indicator flex gap-1">
+                        <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                        <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                        <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(typingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            return id;
+        }
+
+        // Remove typing indicator
+        function removeTypingIndicator(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.remove();
+            }
+        }
+
+        // Start new conversation
+        function startNewConversation() {
+            if (confirm('Start a new conversation? Current conversation will be saved and you can continue it later.')) {
+                threadId = null;
+                messagesContainer.innerHTML = `
+                    <div class="flex gap-3 message-enter">
+                        <div class="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0 shadow-lg">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                        <div class="bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl rounded-tl-sm p-4 max-w-[80%] shadow-xl border border-slate-600">
+                            <p class="text-slate-100 leading-relaxed">Welcome to Greenfield CyberSecurity Support. How may I assist you today?</p>
+                        </div>
+                    </div>
+                `;
+                messageInput.focus();
+            }
+        }
+
+        // Utility function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Handle Enter key (Shift+Enter for new line)
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>
