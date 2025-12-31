@@ -55,10 +55,10 @@ The agent uses LangGraph's tool calling system:
 ### Search Tool Configuration
 
 ```python
-from langchain_tavily import TavilySearchResults
+from langchain_tavily import TavilySearch
 
 # Initialize with max 3 results per search
-search_tool = TavilySearchResults(max_results=3)
+search_tool = TavilySearch(max_results=3)
 ```
 
 ### System Prompt Enhancement
@@ -124,11 +124,11 @@ START → agent → [tools_condition] → tools → agent → END
 
 **agent.py**:
 ```python
-from langchain_tavily import TavilySearchResults
+from langchain_tavily import TavilySearch
 from langgraph.prebuilt import ToolNode, tools_condition
 
 # Initialize tool
-search_tool = TavilySearchResults(max_results=3)
+search_tool = TavilySearch(max_results=3)
 tools = [search_tool]
 
 # Bind tools to model
@@ -250,10 +250,10 @@ To see when tools are called, check the conversation flow:
 
 ```python
 # Return more results (uses more tokens)
-search_tool = TavilySearchResults(max_results=5)
+search_tool = TavilySearch(max_results=5)
 
 # Return fewer results (faster, uses fewer tokens)
-search_tool = TavilySearchResults(max_results=1)
+search_tool = TavilySearch(max_results=1)
 ```
 
 ### Search Parameters
